@@ -4,6 +4,7 @@ let WIDTH = paper.view.size.width;
 let HEIGHT = paper.view.size.height;
 let field;
 let pointCharges;
+let selected = null;
 
 function random(min, max) {
 	return Math.random() * (max - min) + min;
@@ -11,7 +12,6 @@ function random(min, max) {
 
 class PointCharge {
 	INIT_RANGE = 0.5; // middle 50%
-	DIAMETER = 50;
 
 	constructor() {
 		this.position = new paper.Point(
@@ -20,6 +20,7 @@ class PointCharge {
 		);
 		this.setCharge(random(0, 1) > 0.5 ? 1 : -1);
 		this.locked = false;
+		this.diameter = 60;
 		this.label = "";
 	}
 
@@ -28,6 +29,12 @@ class PointCharge {
 	}
 
 	setCharge(charge) {
+		this.item?.remove();
+		this.item = null;
+		this.loadingPromise?.then(() => {
+			this.item.remove();
+			this.item = null;
+		});
 		this.charge = charge;
 		const path = "assets/" + (charge < 0 ? "negative" : "positive") + ".svg";
 
@@ -36,6 +43,7 @@ class PointCharge {
 				if (item) {
 					this.item = item;
 					this.hide();
+					this.setupHandlers();
 					resolve();
 				} else {
 					console.error("Failed to load SVG:", path);
@@ -43,6 +51,85 @@ class PointCharge {
 				}
 			});
 		});
+	}
+
+	setupHandlers() {
+		this.item.onMouseEnter = this.onEnter.bind(this);
+		this.item.onMouseLeave = this.onLeave.bind(this);
+		this.item.onMouseDrag = this.onDrag.bind(this);
+		this.item.onDoubleClick = this.onClick.bind(this);
+	}
+
+	onEnter() {
+		if (!this.locked) {
+			this.item.strokeWidth = 5;
+			this.item.strokeColor = "yellow";
+
+			document.body.style.cursor = "grab";
+		}
+
+		const infoBox = document.getElementById("infoBox");
+		if (infoBox.classList.contains("hidden")) {
+			infoBox.classList.remove("hidden");
+		}
+
+		const title = document.getElementById("infoTitle");
+		title.innerHTML = "Point Charge";
+
+		const info1 = document.getElementById("iline1");
+		info1.innerHTML = "Label: " + (this.label || "NONE");
+		const info2 = document.getElementById("iline2");
+		info2.innerHTML = "Position: (" + this.position.x.toFixed(0) + ", " + this.position.y.toFixed(0) + ")";
+		const info3 = document.getElementById("iline3");
+		info3.innerHTML = "Charge: " + this.charge;
+		const info4 = document.getElementById("iline4");
+		info4.innerHTML = "Locked: " + this.locked;
+	}
+
+	onLeave() {
+		this.item.strokeWidth = 0;
+
+		document.body.style.cursor = "default";
+
+		const infoBox = document.getElementById("infoBox");
+		if (!infoBox.classList.contains("hidden")) {
+			infoBox.classList.add("hidden");
+		}
+	}
+
+	onDrag(event) {
+		if (!this.locked) {
+			document.body.style.cursor = "grabbing";
+			this.setPosition(event.point.x, event.point.y);
+			this.draw();
+			field.update(pointCharges);
+			field.draw();
+		}
+	}
+
+	onClick(event) {
+		selected?.deselect();
+		selected = this;
+		openDialog();
+		if (this.item) {
+			this.item.selected = true;
+		} else if (this.loadingPromise) {
+			this.loadingPromise.then(() => {
+				this.item.selected = true;
+			});
+		}
+	}
+
+	deselect() {
+		closeDialog();
+		selected = null;
+		if (this.item) {
+			this.item.selected = false;
+		} else if (this.loadingPromise) {
+			this.loadingPromise.then(() => {
+				this.item.selected = false;
+			});
+		}
 	}
 
 	draw() {
@@ -57,7 +144,7 @@ class PointCharge {
 
 	_draw() {
 		this.item.position = this.position;
-		this.item.scale(this.DIAMETER / this.item.bounds.width);
+		this.item.scale(this.diameter / this.item.bounds.width);
 		this.item.visible = true;
 	}
 
@@ -132,20 +219,21 @@ class Vector {
 	}
 
 	calculate(pointCharges) {
-		let netForce = new paper.Point(0, 0);
+		this.force = new paper.Point(0, 0);
 
 		pointCharges.forEach((pointCharge) => {
 			let distanceVector = pointCharge.position.subtract(this.vector);
 			let distanceSquared = distanceVector.length ** 2;
 
-			if (distanceVector.length > pointCharge.DIAMETER / 2) {
+			if (distanceVector.length > pointCharge.diameter / 2) {
 				let forceMagnitude = pointCharge.charge / distanceSquared;
 				let forceVector = distanceVector.normalize().multiply(forceMagnitude);
-				netForce = netForce.add(forceVector);
+				this.force = this.force.add(forceVector);
+			} else {
+				this.force = new paper.Point(0, 0);
+				return;
 			}
 		});
-
-		this.force = netForce;
 	}
 
 	delete() {
@@ -161,7 +249,7 @@ class VectorField {
 		this.load();
 	}
 
-	async load() {
+	load() {
 		paper.project.importSVG("assets/vector.svg", (item) => {
 			let count = 0;
 			for (let x = 0; x < WIDTH; x += this.GAP) {
@@ -197,20 +285,86 @@ function setup() {
 	field = new VectorField();
 	pointCharges = [];
 
-	setupHandlers();
-}
-
-function setupHandlers() {
 	const tool = new paper.Tool();
-	tool.onMouseDown = function (event) {
-		const p = new PointCharge();
-		pointCharges.push(p);
-		p.setPosition(event.point.x, event.point.y);
-		p.draw();
-		field.update(pointCharges);
-		field.draw();
+	tool.onMouseDown = (event) => {
+		selected?.deselect();
 	};
 }
+
+function openDialog() {
+	const dialog = document.getElementById("dialogBox");
+	dialog.classList.remove("hidden");
+
+	const label = document.getElementById("label");
+	label.value = selected?.label || "";
+	label.addEventListener("input", (event) => {
+		selected.label = event.target.value;
+	});
+
+	const charge = document.getElementById("charge");
+	charge.value = selected?.charge || "";
+	charge.addEventListener("input", (event) => {
+		selected.setCharge(event.target.value);
+		selected.draw();
+		field.update(pointCharges);
+		field.draw();
+	});
+
+	const diameter = document.getElementById("diameter");
+	diameter.value = selected?.diameter || "";
+	diameter.addEventListener("input", (event) => {
+		selected.diameter = event.target.value;
+		selected.draw();
+	});
+
+	const locked = document.getElementById("locked");
+	locked.checked = selected?.locked || false;
+	locked.addEventListener("click", () => {
+		selected.locked = !selected.locked;
+	});
+
+	document.getElementById("delete").addEventListener("click", () => {
+		pointCharges = pointCharges.filter((p) => p !== selected);
+		selected?.hide();
+		field.update(pointCharges);
+		field.draw();
+		selected = null;
+		const dialog = document.getElementById("dialogBox");
+		dialog.classList.add("hidden");
+	});
+}
+
+function closeDialog() {
+	const dialog = document.getElementById("dialogBox");
+	dialog.classList.add("hidden");
+}
+
+document.getElementById("add").addEventListener("click", () => {
+	selected?.deselect();
+	const p = new PointCharge();
+	pointCharges.push(p);
+	p.draw();
+	p.onClick();
+	field.update(pointCharges);
+	field.draw();
+});
+
+document.getElementById("view").addEventListener("click", () => {
+	const view = document.getElementById("view");
+	if (view.classList.contains("showing")) {
+		for (let p of pointCharges) {
+			p.hide();
+		}
+		view.classList.remove("showing");
+		view.innerHTML = "Show Points";
+	} else {
+		for (let p of pointCharges) {
+			p.draw();
+		}
+		view.classList.add("showing");
+		view.innerHTML = "Hide Points";
+	}
+});
 
 document.addEventListener("DOMContentLoaded", setup);
 window.addEventListener("resize", () => {
