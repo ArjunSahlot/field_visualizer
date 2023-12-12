@@ -3,8 +3,8 @@
 
 <svg
    width="70mm"
-   height="25mm"
-   viewBox="0 0 70 25"
+   height="70mm"
+   viewBox="0 0 70 70"
    version="1.1"
    id="svg1"
    inkscape:export-filename="vector.png"
@@ -27,7 +27,7 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="1.5156072"
-     inkscape:cx="43.217002"
+     inkscape:cx="42.557201"
      inkscape:cy="135.91912"
      inkscape:window-width="1920"
      inkscape:window-height="1016"
@@ -46,7 +46,7 @@
        id="rect1"
        width="7.5560913"
        height="50"
-       x="8.7219543"
+       x="31.221954"
        y="-50"
        transform="rotate(90)" />
     <path
@@ -65,7 +65,7 @@
        inkscape:randomized="0"
        d="m 65.17853,45.828184 -24.644704,0 12.322352,-21.342939 z"
        inkscape:transform-center-y="-2.5192982e-06"
-       transform="matrix(0,1.0144167,-0.93707805,0,92.94459,-41.11819)"
+       transform="matrix(0,1.0144167,-0.93707805,0,92.94459,-18.61819)"
        inkscape:transform-center-x="-3.3333341" />
   </g>
 </svg>
