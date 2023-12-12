@@ -229,7 +229,7 @@ class Vector {
 
 			// if (distanceVector.length > pointCharge.diameter / 2) {
 			let forceMagnitude = pointCharge.charge / distanceSquared;
-			let forceVector = distanceVector.normalize().multiply(forceMagnitude);
+			let forceVector = distanceVector.normalize().multiply(-forceMagnitude);
 			this.force = this.force.add(forceVector);
 			// } else {
 			// this.force = new paper.Point(0, 0);
