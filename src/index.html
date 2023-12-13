@@ -11,6 +11,16 @@
 		<canvas id="canvas" resize></canvas>
 		<button id="add">Add Point Charge</button>
 		<button id="view" class="showing">Clear</button>
+		<div id="density-container" class="slider-container">
+			<input type="range" id="density" class="slider" value="50" max="100" min="1" />
+			<div id="density-value" class="slider-value">50</div>
+		</div>
+		<button class="density-button">Current Vector Density: 50</button>
+		<div id="size-container" class="slider-container">
+			<input type="range" id="size" class="slider" value="50" max="100" min="1" />
+			<div id="size-value" class="slider-value">50</div>
+		</div>
+		<button class="size-button">Current Vector Size: 50</button>
 		<div id="infoBox" class="hidden">
 			<div id="infoTitle"></div>
 			<div id="iline1" class="iline"></div>

@@ -154,13 +154,13 @@ class PointCharge {
 }
 
 class Vector {
-	K = 400;
-
 	constructor(position, item, id) {
 		this.vector = new paper.Point(position);
 		this.force = new paper.Point(0, 0);
 		this.prevRot = 0;
 		this.id = id;
+		this.K = 400;
+		self.prevScale = 1;
 		this.item = item.clone();
 		this.item.onMouseEnter = this.onEnter.bind(this);
 		this.item.onMouseLeave = this.onLeave.bind(this);
@@ -215,7 +215,8 @@ class Vector {
 		this.item.position = this.vector;
 		this.item.rotate(this.force.angle - this.prevRot);
 		this.prevRot = this.force.angle;
-		this.item.scale((this.K * Math.pow(this.force.length, 0.35)) / this.item.bounds.height);
+		this.item.scale((this.K * Math.pow(this.force.length, 0.35)) / this.item.bounds.height / self.prevScale);
+		self.prevScale = (this.K * Math.pow(this.force.length, 0.35)) / this.item.bounds.height;
 		this.item.visible = true;
 		this.item.sendToBack();
 	}
@@ -244,18 +245,17 @@ class Vector {
 }
 
 class VectorField {
-	GAP = 50;
-
 	constructor() {
 		this.vectors = [];
+		this.gap = 50;
 		this.load();
 	}
 
 	load() {
 		paper.project.importSVG("assets/vector.svg", (item) => {
 			let count = 0;
-			for (let x = 0; x < WIDTH; x += this.GAP) {
-				for (let y = 0; y < HEIGHT; y += this.GAP) {
+			for (let x = 0; x < WIDTH; x += this.gap) {
+				for (let y = 0; y < HEIGHT; y += this.gap) {
 					this.vectors.push(new Vector(new paper.Point(x, y), item, count));
 					count++;
 				}
@@ -265,9 +265,12 @@ class VectorField {
 	}
 
 	update(pointCharges) {
+		document.body.style.cursor = "wait";
+
 		for (let vector of this.vectors) {
 			vector.calculate(pointCharges);
 		}
+		document.body.style.cursor = "default";
 	}
 
 	draw() {
@@ -280,6 +283,20 @@ class VectorField {
 		for (let vector of this.vectors) {
 			vector.delete();
 		}
+	}
+
+	setGap(gap) {
+		this.gap = gap;
+		this.delete();
+		this.vectors = [];
+		this.load();
+	}
+
+	setK(k) {
+		for (let vector of this.vectors) {
+			vector.K = k;
+		}
+		this.draw();
 	}
 }
 
@@ -307,8 +324,7 @@ function setup() {
 			pointCharges[i].hide();
 			pointCharges.pop(0);
 		}
-		field.delete();
-		field = new VectorField();
+		field.setGap(field.gap);
 		// const view = document.getElementById("view");
 		// if (view.classList.contains("showing")) {
 		// 	for (let p of pointCharges) {
@@ -323,6 +339,50 @@ function setup() {
 		// 	view.classList.add("showing");
 		// 	view.innerHTML = "Hide Points";
 		// }
+	});
+
+	const density = document.getElementById("density");
+	const densityVal = document.getElementById("density-value");
+
+	updateSlider = () => {
+		const thumbWidth = 25;
+		const sliderWidth = density.offsetWidth - thumbWidth;
+		const percent = (density.value - density.min) / (density.max - density.min);
+		const offset = percent * sliderWidth;
+		densityVal.style.left = `${offset + thumbWidth / 2}px`;
+		densityVal.textContent = density.value;
+	};
+
+	density.addEventListener("input", updateSlider);
+	updateSlider();
+
+	const densityButton = document.getElementsByClassName("density-button")[0];
+	densityButton.addEventListener("click", () => {
+		densityButton.innerHTML = "Current Vector Density: " + density.value;
+		field.setGap(653.46 * Math.pow(density.value, -0.298263) - 153.46);
+	});
+
+	const size = document.getElementById("size");
+	const sizeVal = document.getElementById("size-value");
+
+	updateSlider = () => {
+		const thumbWidth = 25;
+		const sliderWidth = size.offsetWidth - thumbWidth;
+		const percent = (size.value - size.min) / (size.max - size.min);
+		const offset = percent * sliderWidth;
+		sizeVal.style.left = `${offset + thumbWidth / 2}px`;
+		sizeVal.textContent = size.value;
+	};
+
+	size.addEventListener("input", updateSlider);
+	updateSlider();
+
+	const sizeButton = document.getElementsByClassName("size-button")[0];
+	sizeButton.addEventListener("click", () => {
+		sizeButton.innerHTML = "Current Vector Size: " + size.value;
+		field.setK(6784900 / (2.12199 * Math.pow(101 - size.value, 2) + 201.781 * (101 - size.value) + 1492.31));
+		field.update();
+		field.draw();
 	});
 }
 
@@ -379,6 +439,5 @@ window.addEventListener("resize", () => {
 	paper.view.viewSize = [window.innerWidth, window.innerHeight];
 	WIDTH = paper.view.size.width;
 	HEIGHT = paper.view.size.height;
-	field.delete();
-	field = new VectorField();
+	field.setGap(field.gap);
 });
