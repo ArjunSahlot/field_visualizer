@@ -1,59 +1,211 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Electric Field Visualizer</title>
-		<link rel="stylesheet" type="text/css" href="styles.css" />
-		<script type="text/javascript" src="https://unpkg.com/paper"></script>
-	</head>
-	<body>
-		<canvas id="canvas" resize></canvas>
-		<button id="add">Add Point Charge</button>
-		<button id="view" class="showing">Clear</button>
-		<div id="density-container" class="slider-container">
-			<input type="range" id="density" class="slider" value="50" max="100" min="1" />
-			<div id="density-value" class="slider-value">50</div>
-		</div>
-		<button class="density-button">Current Vector Density: 50</button>
-		<div id="size-container" class="slider-container">
-			<input type="range" id="size" class="slider" value="50" max="100" min="1" />
-			<div id="size-value" class="slider-value">50</div>
-		</div>
-		<button class="size-button">Current Vector Size: 50</button>
-		<div id="infoBox" class="hidden">
-			<div id="infoTitle"></div>
-			<div id="iline1" class="iline"></div>
-			<div id="iline2" class="iline"></div>
-			<div id="iline3" class="iline"></div>
-			<div id="iline4" class="iline"></div>
-		</div>
-		<div id="dialogBox" class="hidden">
-			<form id="dialogForm">
-				<label for="label">Label</label>
-				<input type="text" id="label" name="label" />
-				<label for="charge">Charge</label>
-				<input type="number" id="charge" name="charge" />
-				<label for="radius">Diameter</label>
-				<input type="number" id="diameter" name="diameter" />
-				<div class="side">
-					<div class="grouped">
-						<label for="locked">Locked</label>
-						<input type="checkbox" id="locked" name="locked" />
-					</div>
-					<button type="button" id="delete">
-						<span class="text">Delete</span>
-						<span class="icon">
-							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-								<path
-									d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"
-								></path>
-							</svg>
-						</span>
-					</button>
-				</div>
-			</form>
-		</div>
-		<script type="text/javascript" src="vis.js" canvas="canvas"></script>
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#faf9f6" />
+    <meta
+      name="description"
+      content="An interactive electric field simulator. Place charges, explore field vectors and equipotential maps, and measure the field anywhere."
+    />
+    <link rel="canonical" href="https://field-visualizer.arjunsahlot.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Field Visualizer · Arjun Sahlot" />
+    <meta property="og:description" content="Place charges and watch Coulomb’s law take shape." />
+    <meta property="og:url" content="https://field-visualizer.arjunsahlot.com/" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Field Visualizer · Arjun Sahlot</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("field-theme");
+          if (theme !== "light" && theme !== "dark") {
+            theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+          document.documentElement.classList.toggle("dark", theme === "dark");
+          document.documentElement.style.colorScheme = theme;
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#simulator">Skip to simulator</a>
+
+    <div class="page-shell">
+      <header class="site-header rise" style="--step: 0">
+        <a class="quiet-link" href="https://arjunsahlot.com" aria-label="Back to Arjun Sahlot">
+          Arjun Sahlot
+        </a>
+        <nav aria-label="Page navigation">
+          <a class="quiet-link" href="#guide">Guide</a>
+          <a class="quiet-link" href="https://arjunsahlot.com/projects">Projects</a>
+          <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch theme">
+            <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="theme-orb" cx="12" cy="12" r="4.25" />
+              <path class="theme-rays" d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.58 4.58l1.56 1.56M17.86 17.86l1.56 1.56M19.42 4.58l-1.56 1.56M6.14 17.86l-1.56 1.56" />
+            </svg>
+          </button>
+        </nav>
+      </header>
+
+      <main>
+        <section class="intro rise" style="--step: 1" aria-labelledby="page-title">
+          <p class="eyebrow">Interactive experiment · Electrostatics</p>
+          <h1 id="page-title">Electric fields, made <em>visible.</em></h1>
+          <p>
+            Arrange point charges and watch Coulomb&rsquo;s law take shape. Inspect direction,
+            strength, and potential anywhere in the field.
+          </p>
+        </section>
+
+        <section class="simulator rise" id="simulator" style="--step: 2" aria-label="Electric field simulator">
+          <div class="simulator-head">
+            <div>
+              <p class="section-label">Workbench</p>
+              <p id="scene-summary" class="scene-summary" aria-live="polite">Dipole · 2 charges</p>
+            </div>
+            <div class="history-actions" aria-label="History controls">
+              <button class="text-button" id="undo" type="button" disabled>Undo</button>
+              <button class="text-button" id="redo" type="button" disabled>Redo</button>
+              <button class="text-button danger-text" id="clear" type="button">Clear</button>
+            </div>
+          </div>
+
+          <div class="tool-row" role="toolbar" aria-label="Canvas tools">
+            <div class="segmented tool-segment" aria-label="Placement tool">
+              <button class="segment is-active" type="button" data-tool="select" aria-pressed="true">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 2 9 6-4.1 1.1L6 13.2 3 2Z" /></svg>
+                Move
+              </button>
+              <button class="segment" type="button" data-tool="positive" aria-pressed="false">
+                <span class="charge-mini positive">+</span> Positive
+              </button>
+              <button class="segment" type="button" data-tool="negative" aria-pressed="false">
+                <span class="charge-mini negative">−</span> Negative
+              </button>
+            </div>
+            <button class="icon-button help-trigger" id="shortcut-help" type="button" aria-label="Show keyboard shortcuts" aria-expanded="false">?</button>
+          </div>
+
+          <div class="shortcut-popover" id="shortcut-popover" hidden>
+            <div><kbd>V</kbd><span>Move tool</span></div>
+            <div><kbd>P</kbd><span>Place positive</span></div>
+            <div><kbd>N</kbd><span>Place negative</span></div>
+            <div><kbd>⌫</kbd><span>Delete selected</span></div>
+            <div><kbd>⌘ Z</kbd><span>Undo</span></div>
+          </div>
+
+          <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="field-canvas" tabindex="0" aria-label="Interactive electric field. Use the placement controls, then click to add charges."></canvas>
+            <div class="canvas-hint" id="canvas-hint" aria-hidden="true">
+              <span class="hint-icon">+</span>
+              <span>Click to place a positive charge</span>
+            </div>
+            <div class="probe" id="probe" aria-hidden="true">
+              <span id="probe-position">x 0.0 · y 0.0 m</span>
+              <span id="probe-field">E 0.00 N/C</span>
+            </div>
+            <div class="scale-mark" aria-hidden="true"><span></span>1 m</div>
+          </div>
+
+          <div class="inspector" id="inspector" hidden>
+            <div class="inspector-title">
+              <div>
+                <p class="section-label">Selected charge</p>
+                <p id="selected-name">Positive charge</p>
+              </div>
+              <button class="icon-button" id="delete-charge" type="button" aria-label="Delete selected charge">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4h10M6 4V2.75h4V4m-5.8 0 .55 9h6.5l.55-9M6.5 6.5v4M9.5 6.5v4" /></svg>
+              </button>
+            </div>
+            <div class="inspector-fields">
+              <label>
+                <span>Label</span>
+                <input id="charge-label" type="text" maxlength="18" placeholder="Optional" aria-label="Charge label" />
+              </label>
+              <label>
+                <span>Charge <small>nC</small></span>
+                <input id="charge-value" type="number" min="-20" max="20" step="0.5" aria-label="Charge in nanocoulombs" />
+              </label>
+              <label>
+                <span>x <small>m</small></span>
+                <input id="charge-x" type="number" step="0.1" aria-label="Horizontal position in metres" />
+              </label>
+              <label>
+                <span>y <small>m</small></span>
+                <input id="charge-y" type="number" step="0.1" aria-label="Vertical position in metres" />
+              </label>
+            </div>
+            <label class="check-row">
+              <input id="charge-locked" type="checkbox" aria-label="Lock charge position" />
+              <span>Lock position</span>
+            </label>
+          </div>
+
+          <div class="control-section">
+            <div class="control-heading">
+              <p class="section-label">Display</p>
+              <span id="display-description">Direction and relative strength</span>
+            </div>
+            <div class="segmented display-segment" aria-label="Display mode">
+              <button class="segment is-active" type="button" data-view="vectors" aria-pressed="true">Vectors</button>
+              <button class="segment" type="button" data-view="lines" aria-pressed="false">Field lines</button>
+              <button class="segment" type="button" data-view="potential" aria-pressed="false">Potential</button>
+            </div>
+            <div class="range-grid">
+              <label>
+                <span>Density <output id="density-output">Medium</output></span>
+                <input id="density" type="range" min="1" max="5" value="3" aria-label="Field density" />
+              </label>
+              <label>
+                <span><span id="scale-label">Scale</span> <output id="scale-output">1.0×</output></span>
+                <input id="vector-scale" type="range" min="60" max="160" value="100" aria-label="Vector scale" />
+              </label>
+            </div>
+          </div>
+
+          <div class="control-section presets-section">
+            <div class="control-heading">
+              <p class="section-label">Arrangements</p>
+              <span>Start from a known field</span>
+            </div>
+            <div class="preset-list" role="list">
+              <button type="button" data-preset="dipole"><span>Dipole</span><small>+ −</small></button>
+              <button type="button" data-preset="like"><span>Like charges</span><small>+ +</small></button>
+              <button type="button" data-preset="capacitor"><span>Capacitor</span><small>parallel plates</small></button>
+              <button type="button" data-preset="quadrupole"><span>Quadrupole</span><small>4 charges</small></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="guide rise" id="guide" style="--step: 3" aria-labelledby="guide-title">
+          <div class="section-heading">
+            <p class="section-label" id="guide-title">Reading the field</p>
+          </div>
+          <div class="guide-copy">
+            <p>
+              Every arrow shows the force a positive test charge would feel. It points away
+              from positive charges and toward negative ones; its opacity and length encode
+              the local magnitude.
+            </p>
+            <p>
+              The simulator uses Coulomb&rsquo;s law, <span class="formula">E = kq/r²</span>, with
+              positions in metres and charges in nanocoulombs. The potential view maps
+              <span class="positive-word">positive</span> and <span class="negative-word">negative</span>
+              electric potential around zero.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>A small physics tool by <a class="inline-link" href="https://arjunsahlot.com">Arjun Sahlot</a>.</span>
+        <a class="quiet-link" href="https://github.com/ArjunSahlot/field_visualizer">Source ↗</a>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="vis.js"></script>
+  </body>
 </html>
